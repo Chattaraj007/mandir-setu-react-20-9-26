@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: mandir_setu_postgres
+    environment:
+      POSTGRES_DB: mandir_setu_db
+      POSTGRES_USER: mandir_user
+      POSTGRES_PASSWORD: mandir_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mandir_user -d mandir_setu_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mandir_net
+
+  # 2. Dynamic Express REST API Backend
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mandir_setu_api
+    environment:
+      PORT: 5000
+      DATABASE_URL: postgresql://mandir_user:mandir_password@postgres:5432/mandir_setu_db
+      JWT_SECRET: mandir_setu_sacred_jwt_secret_key_108
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mandir_net
+
+  # 3. Universal React Native (Web + iOS / Android Metro Bundler)
+  web:
+    build:
+      context: ./mobile-web
+      dockerfile: Dockerfile
+    container_name: mandir_setu_web
+    ports:
+      - "3000:3000"   # Test in browser directly at http://localhost:3000
+      - "8081:8081"   # Expo / Metro bundler for iOS & Android testing
+    environment:
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
+      REACT_NATIVE_PACKAGER_HOSTNAME: 0.0.0.0
+    depends_on:
+      - api
+    networks:
+      - mandir_net
+
+volumes:
+  pgdata:
+
+networks:
+  mandir_net:
+    driver: bridge

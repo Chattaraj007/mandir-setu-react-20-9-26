@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Environment
+.env
+.env.local
+
+# PostgreSQL data volume
+pgdata/
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.log
